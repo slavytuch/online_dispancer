@@ -26,6 +26,7 @@ class PatientFactory extends Factory
         ];
         return [
             'gender' => Gender::cases()[array_rand(Gender::cases())],
+            'phone' => $this->faker->phoneNumber,
             'name' => $this->faker->firstName,
             'last_name' => $this->faker->lastName,
             'height' => $this->faker->numberBetween(150, 220),
