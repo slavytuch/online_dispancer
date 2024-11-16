@@ -1,9 +1,14 @@
 import os
+import json
+import base64
 import logging
 from flask import Flask, request, jsonify
 import requests
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from pydub import AudioSegment
+
 
 load_dotenv()
 
@@ -19,23 +24,65 @@ logging.basicConfig(
 app = Flask(__name__)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-if not OPENAI_API_KEY:
-    logging.error("OPENAI_API_KEY не найден")
-    raise ValueError("Необходимо установить переменную окружения OPENAI_API_KEY")
+HF_AUTH_TOKEN = os.getenv("HF_AUTH_TOKEN")
+MODEL_NAME = "ContactDoctor/Bio-Medical-Llama-3-8B"
 
 CHATGPT_API_URL = "http://185.164.163.152/chat/completions"
 WHISPER_API_URL = "http://185.164.163.152/audio/transcriptions"
 IMAGE_ANALYSIS_API_URL = "http://185.164.163.152/image/analysis"
 
+if not OPENAI_API_KEY:
+    logging.error("OPENAI_API_KEY не найден")
+    raise ValueError("Необходимо установить переменную окружения OPENAI_API_KEY")
+
+tokenizer = None
+model = None
+
+def load_model():
+    global tokenizer, model
+    if not tokenizer or not model:
+        logging.info("Загружаем модель и токенайзер...")
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=HF_AUTH_TOKEN)
+        model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, token=HF_AUTH_TOKEN)
+        model.config.pad_token_id = model.config.eos_token_id
+
+@app.route('/summary', methods=['POST'])
+def summary():
+    load_model()
+    try:
+        data = request.json
+        if not data or 'patient_data' not in data:
+            return jsonify({"error": "No patient data provided"}), 400
+
+        patient_data = data['patient_data']
+        prompt = f"Summarize the following medical data with a focus on important changes:\n{patient_data}"
+
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024, padding=True)
+        outputs = model.generate(
+            inputs.input_ids,
+            attention_mask=inputs.attention_mask,
+            max_length=300,
+            num_return_sequences=1
+        )
+
+        summary_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+        return jsonify({"summary": summary_text})
+
+    except Exception as e:
+        logging.error(f"Error during summary generation: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    import json
+    import logging
+    from flask import request, jsonify
+
     user_message = request.json.get('message')
     request_type = request.json.get('type')
 
     if not user_message or not request_type:
-        logging.error("No message or type provided")
         return jsonify({'error': 'No message or type provided'}), 400
 
     headers = {
@@ -45,116 +92,168 @@ def chat():
 
     messages = [{"role": "user", "content": user_message}]
     if request_type == "summary":
-        messages.insert(0, {"role": "system", "content": "Сделай саммари на основе данной информации."})
+        messages.insert(0, {"role": "system", "content": "Сделай краткое описание предоставленного текста."})
     elif request_type == "paraphrase":
-        messages.insert(0, {"role": "system", "content": "Перефразируй предоставленную информацию."})
+        messages.insert(0, {"role": "system", "content": "Перефразируй текст, сохранив его смысл."})
     elif request_type == "relevant_answers":
-        messages.insert(0, {"role": "system", "content": "Выведи два наиболее релевантных ответа на основе информации."})
+        messages.insert(0, {"role": "system", "content": "Предоставь два наиболее релевантных ответа в аргументах функции."})
     else:
         return jsonify({'error': 'Invalid request type'}), 400
 
+    function_data = [
+        {
+            "name": "get_relevant_answers",
+            "description": "Возвращает два наиболее релевантных ответа в аргументах функции.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "answer1": {
+                        "type": "string",
+                        "description": "Первый релевантный ответ"
+                    },
+                    "answer2": {
+                        "type": "string",
+                        "description": "Второй релевантный ответ"
+                    }
+                },
+                "required": ["answer1", "answer2"]
+            }
+        }
+    ] if request_type == "relevant_answers" else None
     data = {
         "model": "gpt-3.5-turbo",
         "messages": messages,
-        "functions": [
-            {"name": "get_relevant_answers", "parameters": {"num_answers": 2}}
-        ] if request_type == "relevant_answers" else {}
+        "max_tokens": 300,
+        "temperature": 0.7
     }
 
-    response = requests.post(CHATGPT_API_URL, headers=headers, json=data)
+    if request_type == "relevant_answers":
+        data["functions"] = function_data
+        data["function_call"] = {"name": "get_relevant_answers"}
 
-    if response.status_code == 200:
-        try:
-            assistant_response = response.json().get('choices')[0]['message']['content']
-            return jsonify({'text': assistant_response})
-        except KeyError as e:
-            logging.error(f"Invalid API response: {str(e)}")
-            return jsonify({'error': 'Invalid API response', 'details': str(e)}), 500
-    else:
-        logging.error(f"Request failed: {response.text}")
-        return jsonify({'error': 'Request failed', 'details': response.text}), response.status_code
+    try:
+        response = requests.post(CHATGPT_API_URL, headers=headers, json=data)
 
+        if response.status_code == 200:
+            response_json = response.json()
+            logging.info(f"API Response: {response_json}")
+
+            if request_type == "relevant_answers":
+                choice = response_json.get("choices", [{}])[0]
+                function_call_data = choice.get("message", {}).get("function_call", {})
+                arguments = function_call_data.get("arguments")
+
+                if arguments:
+                    structured_args = json.loads(arguments)
+                    answer1 = structured_args.get("answer1")
+                    answer2 = structured_args.get("answer2")
+
+                    if answer1 and answer2:
+                        return jsonify({"text": [answer1, answer2]})
+                    else:
+                        return jsonify({"error": "Missing answers in function response", "details": structured_args}), 500
+                else:
+                    return jsonify({"error": "No arguments in function_call"}), 500
+
+            choice = response_json.get("choices", [{}])[0]
+            content = choice.get("message", {}).get("content")
+            if content:
+                return jsonify({"text": content})
+            else:
+                return jsonify({"error": "No content in response"}), 500
+        else:
+            return jsonify({"error": "Request to OpenAI API failed", "details": response.text}), 500
+    except Exception as e:
+        logging.error(f"Unhandled error: {e}")
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
     if 'file' not in request.files:
-        logging.error("No file provided")
         return jsonify({'error': 'No file provided'}), 400
 
     uploaded_file = request.files['file']
     message_context = request.form.get('message', '')
     filename = secure_filename(uploaded_file.filename)
-
     file_extension = filename.split('.')[-1].lower()
 
-    if file_extension in ['wav']:
+    supported_audio_formats = ['wav', 'oga', 'mp3', 'mp4', 'mpeg', 'mpga', 'webm']
+    supported_image_formats = ['jpg', 'jpeg', 'png']
+
+    if file_extension in supported_audio_formats:
         uploaded_file.save(filename)
 
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}"
-        }
+        wav_filename = filename
+        if file_extension == "oga":
+            wav_filename = filename.replace(".oga", ".wav")
+            convert_to_wav(filename, wav_filename)
+            os.remove(filename)
 
-        files = {
-            'file': (filename, open(filename, 'rb'), 'application/octet-stream')
-        }
+        try:
+            with open(wav_filename, 'rb') as audio_file:
+                headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+                files = {'file': (wav_filename, audio_file, 'application/octet-stream')}
+                data = {'model': 'whisper-1'}
 
-        data = {
-            'model': 'whisper-1'
-        }
+                response = requests.post(WHISPER_API_URL, headers=headers, files=files, data=data)
 
-        response = requests.post(WHISPER_API_URL, headers=headers, files=files, data=data)
+            os.remove(wav_filename)
 
-        os.remove(filename)
-
-        if response.status_code == 200:
-            try:
+            if response.status_code == 200:
                 transcription = response.json().get('text', '')
-                if message_context:
-                    return chat_with_context(transcription, message_context)
-                else:
-                    return jsonify({'text': transcription})
-            except KeyError as e:
-                logging.error(f"Invalid API response: {str(e)}")
-                return jsonify({'error': 'Invalid API response', 'details': str(e)}), 500
-        else:
-            logging.error(f"Transcription failed: {response.text}")
-            return jsonify({'error': 'Transcription failed', 'details': response.text}), response.status_code
 
-    elif file_extension in ['jpg', 'jpeg', 'png']:
+                if message_context:
+                    result_text = f"{message_context}\n\n{transcription}"
+                else:
+                    result_text = transcription
+
+                return jsonify({'text': result_text})
+            else:
+                return jsonify({'error': 'Transcription failed', 'details': response.text}), response.status_code
+
+        except Exception as e:
+            os.remove(wav_filename)
+            return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+    elif file_extension in supported_image_formats:
         uploaded_file.save(filename)
 
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}"
-        }
+        try:
+            base64_image = encode_image(filename)
+            os.remove(filename)
 
-        files = {
-            'file': (filename, open(filename, 'rb'), 'application/octet-stream')
-        }
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {OPENAI_API_KEY}"
+            }
 
-        data = {
-            'message': message_context
-        }
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text",
+                             "text": "На изображении показан медицинский прибор. Определи его тип и значения его показателей. Если это не медицинский прибор, то просто опиши картинку, но нам важны показатели если они там есть."},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                        ]
+                    }
+                ],
+                "max_tokens": 300
+            }
 
-        response = requests.post(IMAGE_ANALYSIS_API_URL, headers=headers, files=files, data=data)
+            response = requests.post(CHATGPT_API_URL, headers=headers, json=data)
 
-        os.remove(filename)
+            if response.status_code == 200:
+                result = response.json()['choices'][0]['message']['content']
+                return jsonify({'text': result})
+            else:
+                return jsonify({'error': 'Image analysis failed', 'details': response.text}), response.status_code
 
-        if response.status_code == 200:
-            try:
-                analysis_result = response.json().get('text', '')
-                if message_context:
-                    return chat_with_context(analysis_result, message_context)
-                else:
-                    return jsonify({'text': analysis_result})
-            except KeyError as e:
-                logging.error(f"Invalid API response: {str(e)}")
-                return jsonify({'error': 'Invalid API response', 'details': str(e)}), 500
-        else:
-            logging.error(f"Image analysis failed: {response.text}")
-            return jsonify({'error': 'Image analysis failed', 'details': response.text}), response.status_code
+        except Exception as e:
+            return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
     else:
-        logging.error("Unsupported file type")
         return jsonify({'error': 'Unsupported file type'}), 400
 
 
@@ -187,6 +286,16 @@ def chat_with_context(transcription, context):
     else:
         logging.error(f"Request failed: {response.text}")
         return jsonify({'error': 'Request failed', 'details': response.text}), response.status_code
+
+def convert_to_wav(input_path, output_path):
+    """Конвертирует аудиофайл в формат WAV."""
+    audio = AudioSegment.from_file(input_path)
+    audio.export(output_path, format="wav")
+
+def encode_image(image_path):
+    """Конвертирует изображение в Base64."""
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
 
 
 if __name__ == '__main__':

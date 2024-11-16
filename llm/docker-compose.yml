@@ -1,13 +1,17 @@
-version: '3.8'
-
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        HF_AUTH_TOKEN: ${HF_AUTH_TOKEN}
     ports:
       - "3002:3002"
     volumes:
       - .:/app
       - ./logs:/app/logs
+      - huggingface_cache:/root/.cache/huggingface
     env_file:
       - .env
-    network_mode: host
+
+volumes:
+  huggingface_cache:
