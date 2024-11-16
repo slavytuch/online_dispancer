@@ -203,11 +203,14 @@ def transcribe():
                 transcription = response.json().get('text', '')
 
                 if message_context:
-                    result_text = f"{message_context}\n\n{transcription}"
+                    description = f"{message_context}\n\n{transcription}"
                 else:
-                    result_text = transcription
+                    description = transcription
 
-                return jsonify({'text': result_text})
+                # Используем GPT для извлечения ключевых значений
+                value = extract_values_from_text(description)
+
+                return jsonify({'description': description, 'value': value})
             else:
                 return jsonify({'error': 'Transcription failed', 'details': response.text}), response.status_code
 
@@ -245,8 +248,12 @@ def transcribe():
             response = requests.post(CHATGPT_API_URL, headers=headers, json=data)
 
             if response.status_code == 200:
-                result = response.json()['choices'][0]['message']['content']
-                return jsonify({'text': result})
+                description = response.json()['choices'][0]['message']['content']
+
+                # Используем GPT для извлечения ключевых значений
+                value = extract_values_from_text(description)
+
+                return jsonify({'description': description, 'value': value})
             else:
                 return jsonify({'error': 'Image analysis failed', 'details': response.text}), response.status_code
 
@@ -255,6 +262,41 @@ def transcribe():
 
     else:
         return jsonify({'error': 'Unsupported file type'}), 400
+
+def extract_values_from_text(text):
+    """
+    Вызывает GPT для выделения ключевых показателей из текста в компактном формате.
+    """
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {OPENAI_API_KEY}"
+        }
+
+        data = {
+            "model": "gpt-4",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": (
+                        f"Извлеки ключевые показатели из текста: '{text}'. "
+                        "Если это артериальное давление, ответь в формате 'SYS/DIA, Pulse'. "
+                        "Если это температура, ответь просто числом с °C. "
+                        "Если прибор показывает другие данные, перечисли их в компактном российском формате."
+                    )
+                }
+            ],
+            "max_tokens": 100
+        }
+
+        response = requests.post(CHATGPT_API_URL, headers=headers, json=data)
+
+        if response.status_code == 200:
+            return response.json()['choices'][0]['message']['content'].strip()
+        else:
+            return "Не удалось извлечь показатели"
+    except Exception as e:
+        return f"Ошибка извлечения данных: {str(e)}"
 
 
 def chat_with_context(transcription, context):
