@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\Sex;
+use App\Enums\Gender;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -25,7 +25,7 @@ class PatientFactory extends Factory
             'Хроническая обструктивная болезнь лёгких',
         ];
         return [
-            'sex' => Sex::cases()[array_rand(Sex::cases())],
+            'gender' => Gender::cases()[array_rand(Gender::cases())],
             'name' => $this->faker->firstName,
             'last_name' => $this->faker->lastName,
             'height' => $this->faker->numberBetween(150, 220),

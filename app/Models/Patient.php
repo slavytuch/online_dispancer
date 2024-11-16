@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\Sex;
+use App\Enums\Gender;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -11,7 +11,7 @@ class Patient extends Model
     use HasFactory;
     protected $fillable = [
         'active',
-        'sex',
+        'gender',
         'name',
         'last_name',
         'patronymic',
@@ -31,7 +31,7 @@ class Patient extends Model
         'weight' => 'float',
         'dispancer_start' => 'datetime',
         'disapncer_end' => 'datetime',
-        'sex' => Sex::class
+        'gender' => Gender::class
     ];
 
     public function paramValues()
