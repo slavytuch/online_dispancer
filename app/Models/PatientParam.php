@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PatientParamType;
 use Illuminate\Database\Eloquent\Model;
 
 class PatientParam extends Model
@@ -10,10 +11,15 @@ class PatientParam extends Model
         'type',
         'name',
         'code',
-        'multiple',
     ];
 
     protected $casts = [
-        'multiple' => 'boolean'
+        'multiple' => 'boolean',
+        'type' => PatientParamType::class
     ];
+
+    public function values()
+    {
+        return $this->hasMany(PatientParamValue::class);
+    }
 }

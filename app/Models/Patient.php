@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Enums\Sex;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Patient extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'active',
+        'sex',
         'name',
         'last_name',
         'patronymic',
@@ -26,12 +30,13 @@ class Patient extends Model
         'height' => 'float',
         'weight' => 'float',
         'dispancer_start' => 'datetime',
-        'disapncer_end' => 'datetime'
+        'disapncer_end' => 'datetime',
+        'sex' => Sex::class
     ];
 
-    public function params()
+    public function paramValues()
     {
-        return $this->belongsToMany(PatientParam::class);
+        return $this->hasMany(PatientParamValue::class);
     }
 
     public function checkups()
@@ -52,5 +57,10 @@ class Patient extends Model
     public function questions()
     {
         return $this->hasMany(Question::class);
+    }
+
+    public function doctor()
+    {
+        return $this->belongsToMany(User::class);
     }
 }

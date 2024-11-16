@@ -15,10 +15,14 @@ return new class extends Migration
             $table->id();
             $table->timestamps();
             $table->string('type');
-            $table->json('checkup_data');
+            $table->string('status')->default('not-started');
+            $table->json('checkup_data')->nullable();
             $table->dateTime('start_at');
             $table->date('deadline');
             $table->integer('try')->default(0);
+            $table->text('description');
+            $table->bigInteger('patient_param_id')->nullable();
+            $table->bigInteger('patient_id')->nullable();
         });
     }
 

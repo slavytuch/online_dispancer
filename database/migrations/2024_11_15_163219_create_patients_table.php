@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->timestamps();
             $table->boolean('active')->default(true);
+            $table->string('sex');
             $table->string('name');
             $table->string('last_name');
             $table->string('patronymic')->nullable();

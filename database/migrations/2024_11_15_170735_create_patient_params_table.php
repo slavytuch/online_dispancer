@@ -16,8 +16,7 @@ return new class extends Migration
             $table->timestamps();
             $table->string('type');
             $table->string('name');
-            $table->string('code');
-            $table->boolean('multiple')->default(false);
+            $table->string('code')->unique();
         });
     }
 

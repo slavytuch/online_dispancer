@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Checkup;
 use Illuminate\Database\Seeder;
 
 class CheckupSeeder extends Seeder
@@ -12,6 +12,6 @@ class CheckupSeeder extends Seeder
      */
     public function run(): void
     {
-        //
+        Checkup::factory(100)->create();
     }
 }
