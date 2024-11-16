@@ -15,8 +15,9 @@ return new class extends Migration
             $table->id();
             $table->timestamps();
             $table->bigInteger('patient_id');
-            $table->bigInteger('message_id');
             $table->string('topic');
+            $table->string('next_stage')->nullable();
+            $table->json('data')->nullable();
         });
     }
 

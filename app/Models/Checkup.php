@@ -35,7 +35,7 @@ class Checkup extends Model
         return $this->belongsTo(Patient::class);
     }
 
-    public function param()
+    public function patientParam()
     {
         return $this->belongsTo(PatientParam::class);
     }

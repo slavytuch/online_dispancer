@@ -26,6 +26,7 @@ return new class extends Migration
             $table->string('dispancer_reason');
             $table->dateTime('dispancer_start');
             $table->dateTime('dispancer_end');
+            $table->string('phone')->nullable();
         });
     }
 

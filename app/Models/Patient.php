@@ -22,6 +22,7 @@ class Patient extends Model
         'dispancer_reason',
         'dispancer_start',
         'dispancer_end',
+        'phone'
     ];
 
     protected $casts = [
