@@ -9,9 +9,24 @@ services:
     volumes:
       - .:/app
       - ./logs:/app/logs
-      - huggingface_cache:/root/.cache/huggingface
     env_file:
       - .env
+    networks:
+      - app_network
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    networks:
+      - app_network
 
 volumes:
   huggingface_cache:
+  ollama_models:
+
+networks:
+  app_network:
+    driver: bridge

@@ -14,4 +14,4 @@ COPY . .
 
 EXPOSE 3002
 
-CMD ["python", "run.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:3002", "--timeout", "600", "--access-logfile", "-", "--error-logfile", "-", "run:app"]
