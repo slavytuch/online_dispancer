@@ -12,12 +12,12 @@ class RotatePendingCheckupsAction
         $result = [];
         foreach (
             Checkup::whereIn('status', [CheckupStatus::NotStarted, CheckupStatus::InProgress])
-                ->where('start_at', '>=', now())
+                ->where('start_at', '<=', now())
                 ->get() as $pendingCheckup
         ) {
             if ($pendingCheckup->try >= 5 || $pendingCheckup->deadline > now()) {
                 $pendingCheckup->status = CheckupStatus::Fail;
-                //TODO: Выплюнуть событие
+                $pendingCheckup->save();
                 continue;
             }
 

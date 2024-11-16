@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CheckupStatus;
 use App\Enums\CheckupType;
+use App\Enums\PatientParamType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -38,5 +39,14 @@ class Checkup extends Model
     public function patientParam()
     {
         return $this->belongsTo(PatientParam::class);
+    }
+
+    public function formatValue()
+    {
+        if ($this->patientParam?->type === PatientParamType::PressureLike && $this->status === CheckupStatus::Finished) {
+            return implode('/', $this->checkup_data);
+        }
+
+        return $this->checkup_data;
     }
 }
