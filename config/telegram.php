@@ -41,7 +41,8 @@ return [
             'allowed_updates' => null,
             'commands' => [
                 \App\Application\Telegram\Commands\StartCommand::class,
-                \App\Application\Telegram\Commands\GreetCommand::class
+                \App\Application\Telegram\Commands\GreetCommand::class,
+                \App\Application\Telegram\Commands\WebAppButtonCommand::class
             ],
         ],
 
@@ -216,4 +217,6 @@ return [
         // 'stop' => Acme\Project\Commands\StopCommand::class,
         // 'status' => Acme\Project\Commands\StatusCommand::class,
     ],
+
+    'webapp_url' => env('TELEGRAM_WEBAPP_URL')
 ];

@@ -48,7 +48,7 @@ class GreetCommand extends Command
         }
 
         $this->replyWithMessage([
-            'text' => $replyVariants[array_rand($replyVariants)] . PHP_EOL .'Время сервера - ' .date('H:i:s'),
+            'text' => $replyVariants[array_rand($replyVariants)],
         ]);
     }
 }

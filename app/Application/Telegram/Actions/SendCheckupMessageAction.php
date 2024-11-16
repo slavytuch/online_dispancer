@@ -39,14 +39,6 @@ class SendCheckupMessageAction
                         ]
                     )
                 ];
-
-                $conversation = app(MeasurementsConversation::class);
-                $conversation->setCheckup($checkup);
-                app(StartConversationAction::class)->execute(
-                    $checkup->patient,
-                    $conversation,
-                    ['checkup_id' => $checkup->id]
-                );
                 break;
         }
 
