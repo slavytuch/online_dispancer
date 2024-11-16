@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Application\Telegram\Conversation\Enums\ConversationTopic;
 use Illuminate\Database\Eloquent\Model;
 
 class Conversation extends Model
@@ -10,11 +11,13 @@ class Conversation extends Model
         'patient_id',
         'message_id',
         'topic',
-        'finished'
+        'finished',
+        'next_stage'
     ];
 
     protected $casts = [
-        'finished' => 'boolean'
+        'finished' => 'boolean',
+        'topic' => ConversationTopic::class
     ];
 
     public function patient()
