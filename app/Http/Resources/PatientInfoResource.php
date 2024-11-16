@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Checkup;
 use App\Models\Patient;
 use App\Models\PatientParamValue;
 use Illuminate\Http\Request;
@@ -24,7 +25,10 @@ class PatientInfoResource extends JsonResource
             ...$this->resource->toArray(),
             'prescriptions' => $this->resource->prescriptions()->get(),
             'doctor' => $this->resource->doctor()->first(),
-            'checkups' => $this->resource->checkups()->get(),
+            'checkups' => $this->resource->checkups()->get()->map(static fn(Checkup $checkup) => [
+                ...$checkup->toArray(),
+                'formattedValue' => $checkup->formatValue()
+            ]),
             'params' => $this->resource->paramValues()->get()->map(function (PatientParamValue $value) {
                 $param = $value->patientParam;
                 return [
