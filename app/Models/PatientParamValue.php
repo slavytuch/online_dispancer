@@ -16,7 +16,7 @@ class PatientParamValue extends Model
         'value' => 'array'
     ];
 
-    public function param()
+    public function patientParam()
     {
         return $this->belongsTo(PatientParam::class);
     }

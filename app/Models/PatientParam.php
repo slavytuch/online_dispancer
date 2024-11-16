@@ -14,7 +14,6 @@ class PatientParam extends Model
     ];
 
     protected $casts = [
-        'multiple' => 'boolean',
         'type' => PatientParamType::class
     ];
 
