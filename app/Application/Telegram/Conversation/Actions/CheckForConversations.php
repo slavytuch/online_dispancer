@@ -5,6 +5,7 @@ namespace App\Application\Telegram\Conversation\Actions;
 use App\Application\Telegram\Conversation\ConversationHandlers\MeasurementsConversation;
 use App\Application\Telegram\Conversation\ConversationHandlers\QuestionConversation;
 use App\Application\Telegram\Conversation\Enums\ConversationTopic;
+use App\Models\Checkup;
 use App\Models\Conversation;
 use App\Models\Patient;
 
@@ -29,7 +30,9 @@ class CheckForConversations
                 $this->proceedConversationAction->execute($patient, app(QuestionConversation::class));
                 break;
             case ConversationTopic::StartMeasurements:
-                $this->proceedConversationAction->execute($patient, app(MeasurementsConversation::class));
+                $measurementsConversation = app(MeasurementsConversation::class);
+                $measurementsConversation->setCheckup(Checkup::find($conversation->data['checkup_id']));
+                $this->proceedConversationAction->execute($patient, $measurementsConversation);
         }
     }
 }

@@ -22,6 +22,11 @@ class ProceedConversationAction
         }
 
         $nextStage = $conversationHandler->$conversation->next_stage;
+        if (!$nextStage) {
+            $conversation->finished = true;
+            $conversation->save();
+            return;
+        }
         Conversation::create([
             'patient_id' => $patient->id,
             'topic' => $conversationHandler->getTopic(),

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->bigInteger('patient_id');
             $table->string('topic');
             $table->string('next_stage')->nullable();
+            $table->json('data')->nullable();
         });
     }
 

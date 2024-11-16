@@ -12,12 +12,14 @@ class Conversation extends Model
         'message_id',
         'topic',
         'finished',
-        'next_stage'
+        'next_stage',
+        'data'
     ];
 
     protected $casts = [
         'finished' => 'boolean',
-        'topic' => ConversationTopic::class
+        'topic' => ConversationTopic::class,
+        'data' => 'array'
     ];
 
     public function patient()
