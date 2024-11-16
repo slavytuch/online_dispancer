@@ -8,7 +8,7 @@ use Telegram\Bot\Commands\Command;
 class GreetCommand extends Command
 {
     protected string $name = 'greet';
-    //protected array $aliases = ['start'];
+
     protected string $description = 'Приветствует пользователя';
 
     public function handle()

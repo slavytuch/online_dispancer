@@ -23,7 +23,6 @@ class StartCommand extends Command
             \Log::info('Пациент зарегистрирован', ['patient' => $patient->toArray()]);
         }
 
-
         $this->replyWithMessage([
             'text' => 'Успешно зарегистрирован',
             'reply_markup' => [
