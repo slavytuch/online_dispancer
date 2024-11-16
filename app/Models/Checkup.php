@@ -43,7 +43,7 @@ class Checkup extends Model
 
     public function formatValue()
     {
-        if ($this->patientParam->type === PatientParamType::PressureLike && $this->status === CheckupStatus::Finished) {
+        if ($this->patientParam?->type === PatientParamType::PressureLike && $this->status === CheckupStatus::Finished) {
             return implode('/', $this->checkup_data);
         }
 
