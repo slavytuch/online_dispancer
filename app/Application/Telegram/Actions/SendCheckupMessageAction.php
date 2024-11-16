@@ -2,6 +2,8 @@
 
 namespace App\Application\Telegram\Actions;
 
+use App\Application\Telegram\Conversation\Actions\StartConversationAction;
+use App\Application\Telegram\Conversation\ConversationHandlers\MeasurementsConversation;
 use App\Application\Telegram\Inline\Enums\ActionFunction;
 use App\Enums\CheckupType;
 use App\Models\Checkup;
@@ -16,24 +18,37 @@ class SendCheckupMessageAction
 
     public function execute(Checkup $checkup)
     {
-        $keyboard = match ($checkup->type) {
-            CheckupType::Medicine => [
-                Keyboard::inlineButton(
-                    [
-                        'text' => 'Принял',
-                        'callback_data' => ActionFunction::CheckupMedicineConfirm->value . $checkup->id
-                    ]
-                ),
-            ],
-            CheckupType::Measurements => [
-                Keyboard::inlineButton(
-                    [
-                        'text' => 'Передаю показания',
-                        'callback_data' => ActionFunction::CheckupMeasurementsConfirm->value . $checkup->id
-                    ]
-                )
-            ]
-        };
+        $keyboard = [];
+        switch ($checkup->type) {
+            case CheckupType::Medicine:
+                $keyboard = [
+                    Keyboard::inlineButton(
+                        [
+                            'text' => 'Принял',
+                            'callback_data' => ActionFunction::CheckupMedicineConfirm->value . $checkup->id
+                        ]
+                    ),
+                ];
+                break;
+            case CheckupType::Measurements:
+                $keyboard = [
+                    Keyboard::inlineButton(
+                        [
+                            'text' => 'Передаю показания',
+                            'callback_data' => ActionFunction::CheckupMeasurementsConfirm->value . $checkup->id
+                        ]
+                    )
+                ];
+
+                $conversation = app(MeasurementsConversation::class);
+                $conversation->setCheckup($checkup);
+                app(StartConversationAction::class)->execute(
+                    $checkup->patient,
+                    $conversation,
+                    ['checkup_id' => $checkup->id]
+                );
+                break;
+        }
 
         $this->telegram->sendMessage([
             'chat_id' => $checkup->patient->telegram_id,

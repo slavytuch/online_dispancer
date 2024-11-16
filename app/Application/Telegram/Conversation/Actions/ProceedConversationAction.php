@@ -15,13 +15,14 @@ class ProceedConversationAction
             $conversationHandler->getTopic()
         )->orderBy('created_at', 'desc')->first();
 
-        if (!$conversation->next_stage) {
+        if (!$nextStage = $conversation->next_stage) {
             $conversation->finished = true;
             $conversation->save();
             return;
         }
 
-        $nextStage = $conversationHandler->$conversation->next_stage;
+
+        $nextStage = $conversationHandler->$nextStage();
         if (!$nextStage) {
             $conversation->finished = true;
             $conversation->save();

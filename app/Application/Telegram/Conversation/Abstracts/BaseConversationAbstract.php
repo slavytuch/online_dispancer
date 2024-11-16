@@ -15,7 +15,6 @@ abstract class BaseConversationAbstract implements ConversationHandlerInterface
         protected Api $telegram,
         protected readonly Conversation $conversation,
     ) {
-        $this->patient = Patient::find($this->conversation->patient_id);
     }
 
     /**

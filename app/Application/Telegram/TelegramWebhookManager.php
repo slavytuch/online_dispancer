@@ -2,6 +2,8 @@
 
 namespace App\Application\Telegram;
 
+use App\Application\Telegram\Conversation\Actions\CheckForConversations;
+use App\Application\Telegram\Conversation\Actions\ProceedConversationAction;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -30,15 +32,15 @@ class TelegramWebhookManager
 
         $from = $relatedObject->from;
         \Log::info('from', ['from' => $from]);
-        $user = null;
-        if ($from && !$user = PatientHelper::getByTelegramId($from->id)) {
-            $user = Patient::factory(1, [
+        $patient = null;
+        if ($from && !$patient = PatientHelper::getByTelegramId($from->id)) {
+            $patient = Patient::factory(1, [
                 'telegram_id' => $from->id,
                 'name' => $from->first_name ?? $from->username,
             ])->create();
         }
 
-        if (!$user) {
+        if (!$patient) {
             throw new \Exception('Нет пользователя для обработки');
         }
 
@@ -51,7 +53,7 @@ class TelegramWebhookManager
                 }
                 return;
             case Message::class:
-
+                app(CheckForConversations::class)->execute($patient);
 
                 break;
         }

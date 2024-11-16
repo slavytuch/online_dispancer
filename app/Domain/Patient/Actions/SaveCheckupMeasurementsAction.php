@@ -2,23 +2,35 @@
 
 namespace App\Domain\Patient\Actions;
 
+use App\Domain\Helpers\PatientParamValueHelper;
 use App\Models\Checkup;
 use App\Models\PatientParamValue;
 
 class SaveCheckupMeasurementsAction
 {
-    public function __construct(protected SucceedCheckupAction $action) {
+    public function __construct(protected SucceedCheckupAction $action, ) {
 
     }
 
     public function execute(Checkup $checkup, mixed $measurements)
     {
-        $param = $checkup->patient_param_id;
-        //TODO: ВОТ ТУТ ПАРС ЗНАЧЕНИЙ ЧЕРЕЗ ИИ
+        $resultMeasure = null;
+        if($measurements->text) {
+            $resultMeasure = $measurements->text;
+        } elseif ($measurements->photo) {
+           $resultMeasure = PatientParamValueHelper::parsePhoto($measurements->photo);
+        }
+
+        $param = $checkup->patientParam;
+
         PatientParamValue::create([
             'patient_param_id' => $param->id,
-            'user_id' => $checkup->patient->id,
-            'value' => $measurements
+            'patient_id' => $checkup->patient->id,
+            'value' => $resultMeasure
         ]);
+
+        $this->action->execute($checkup);
+
+        return $resultMeasure;
     }
 }

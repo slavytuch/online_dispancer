@@ -21,6 +21,6 @@ class CheckupMeasurementsStart extends BaseInlineActionAbstract
         $conversation = app(MeasurementsConversation::class);
         $conversation->setCheckup($checkup);
 
-        app(StartConversationAction::class)->execute($checkup->patient, $conversation, ['checkup_id' => $checkup]);
+        app(StartConversationAction::class)->execute($checkup->patient, $conversation, ['checkup_id' => $checkup->id]);
     }
 }

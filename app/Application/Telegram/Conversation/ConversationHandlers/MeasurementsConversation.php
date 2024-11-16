@@ -33,7 +33,9 @@ class MeasurementsConversation extends BaseConversationAbstract
 
         Log::info('Confirm', ['message' => $message]);
 
-        app(SaveCheckupMeasurementsAction::class)->execute($this->checkup, $message);
+        $result = app(SaveCheckupMeasurementsAction::class)->execute($this->checkup, $message);
+
+        $this->reply(['text' => 'Значение принято - ' . $result]);
 
         return null;
     }
