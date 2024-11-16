@@ -10,6 +10,13 @@ class StartConversationAction
 {
     public function execute(Patient $patient, ConversationHandlerInterface $conversationHandler, ?array $data = null)
     {
+        if (Conversation::where('patient_id', $patient->id)
+            ->where('finished', false)
+            ->exists()
+        ) {
+            return;
+        }
+
         $nextStage = $conversationHandler->init();
 
         Conversation::create([

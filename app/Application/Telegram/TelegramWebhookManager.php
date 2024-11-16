@@ -40,6 +40,8 @@ class TelegramWebhookManager
             ])->create();
         }
 
+        \Log::info('message', ['message' => $relatedObject]);
+
         if (!$patient) {
             throw new \Exception('Нет пользователя для обработки');
         }
