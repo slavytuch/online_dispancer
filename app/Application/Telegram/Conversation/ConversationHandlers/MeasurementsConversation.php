@@ -37,7 +37,7 @@ class MeasurementsConversation extends BaseConversationAbstract
             $file = $this->telegram->downloadFile($message->photo[3]->file_id, $tempPath);
             $resultMeasure = app(ParseMediaAction::class)
                 ->execute($file, $this->checkup, MediaType::Photo);
-        } elseif($message->voice) {
+        } elseif ($message->voice) {
             $tempPath = storage_path('temp');
             $file = $this->telegram->downloadFile($message->voice->file_id, $tempPath);
             $resultMeasure = app(ParseMediaAction::class)
@@ -49,7 +49,9 @@ class MeasurementsConversation extends BaseConversationAbstract
 
         app(SaveCheckupMeasurementsAction::class)->execute($this->checkup, $resultMeasure);
 
-        $this->reply(['text' => 'Значение принято - ' . $resultMeasure]);
+        $this->reply(
+            ['text' => 'Значение параметра "' . $this->checkup->patientParam->name . '" принято - ' . $resultMeasure]
+        );
 
         return null;
     }
