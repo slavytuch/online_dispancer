@@ -27,7 +27,7 @@ class QuestionConversation extends BaseConversationAbstract
         $patient = PatientHelper::getByTelegramId($message->from->id);
 
         if ($message->text) {
-            $result = $message->text;
+            $result['transcription'] = $message->text;
         } elseif ($message->photo) {
             $tempPath = storage_path('temp');
             $file = $this->telegram->downloadFile($message->photo[3]->file_id, $tempPath);
@@ -43,15 +43,16 @@ class QuestionConversation extends BaseConversationAbstract
             return 'confirm';
         }
 
+        $questionText =  $result['transcription'] ?? 'Не смог понять';
         Question::create([
             'patient_id' => $patient->id,
             'user_id' => $patient->doctor->first()->id,
-            'question_text' => $result['transcription'] ?? 'Не смог понять',
+            'question_text' => $questionText,
             'read' => false
         ]);
 
         $this->reply([
-                'text' => 'Принял, как доктор ответит - я тебе пришлю ответ'
+                'text' => 'Принял, как доктор ответит - я тебе пришлю ответ.' .PHP_EOL . 'Твой вопрос:' .PHP_EOL . $questionText
             ]
         );
 
