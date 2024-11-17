@@ -28,6 +28,11 @@ class ProceedConversationAction
             $conversation->save();
             return;
         }
+
+        if ($nextStage === $conversation->next_stage) {
+            return;
+        }
+
         Conversation::create([
             'patient_id' => $patient->id,
             'topic' => $conversationHandler->getTopic(),

@@ -18,14 +18,18 @@ class WebAppButtonCommand extends Command
         $this->replyWithMessage([
             'text' => 'Кнопка на вебапп',
             'reply_markup' => Keyboard::make([
-                'inline_keyboard' => [[
-                    Keyboard::inlineButton([
-                        'text' => 'Личный кабинет',
-                        'web_app' => [
-                            'url' => config('telegram.webapp_url') . '?patientId=' . PatientHelper::getByTelegramId($this->getUpdate()->getRelatedObject()->from->id)->id
-                        ]
-                    ])
-                ]]
+                'inline_keyboard' => [
+                    [
+                        Keyboard::inlineButton([
+                            'text' => 'Личный кабинет',
+                            'web_app' => [
+                                'url' => config('telegram.webapp_url') . '?patientId=' . PatientHelper::getByTelegramId(
+                                        $this->getUpdate()->getRelatedObject()->from->id
+                                    )->id
+                            ]
+                        ])
+                    ]
+                ]
             ])
         ]);
     }

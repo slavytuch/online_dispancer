@@ -12,8 +12,7 @@ abstract class BaseConversationAbstract implements ConversationHandlerInterface
     protected readonly Patient $patient;
 
     public function __construct(
-        protected Api $telegram,
-        protected readonly Conversation $conversation,
+        protected Api $telegram
     ) {
     }
 

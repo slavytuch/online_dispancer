@@ -2,12 +2,13 @@
 
 namespace App\Application\Telegram;
 
+use App\Application\Telegram\Actions\LogAction;
 use App\Application\Telegram\Conversation\Actions\CheckForConversations;
-use App\Application\Telegram\Conversation\Actions\ProceedConversationAction;
-use App\Models\Patient;
+use App\Domain\Patient\Actions\RegisterPatientAction;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 use Telegram\Bot\Api;
+use Telegram\Bot\Keyboard\Keyboard;
 use Telegram\Bot\Objects\CallbackQuery;
 use Telegram\Bot\Objects\Message;
 
@@ -34,10 +35,7 @@ class TelegramWebhookManager
         \Log::info('from', ['from' => $from]);
         $patient = null;
         if ($from && !$patient = PatientHelper::getByTelegramId($from->id)) {
-            $patient = Patient::factory(1, [
-                'telegram_id' => $from->id,
-                'name' => $from->first_name ?? $from->username,
-            ])->create();
+            $patient = app(RegisterPatientAction::class)->execute($from->id, $from->first_name, $from->last_name);
         }
 
         \Log::info('message', ['message' => $relatedObject]);
@@ -46,8 +44,12 @@ class TelegramWebhookManager
             throw new \Exception('Нет пользователя для обработки');
         }
 
+        $logAction = app(LogAction::class);
+
         switch (get_class($relatedObject)) {
             case CallbackQuery::class:
+                $logAction->execute($from->id, $relatedObject->from->id, ['callback_query' => $relatedObject]);
+
                 $factory = new InlineActionFactory($this->telegram, $relatedObject);
                 $action = $factory->getAction();
                 if ($action) {
@@ -55,9 +57,23 @@ class TelegramWebhookManager
                 }
                 return;
             case Message::class:
+                if ($relatedObject->contact && !$patient->phone) {
+                    $patient->phone = $relatedObject->contact->phone_number;
+                    $patient->save();
+                    $this->telegram->sendMessage([
+                        'chat_id' => $from->id,
+                        'text' => 'Спасибо, телефон успешно сохранён',
+                        'reply_markup' => Keyboard::remove()
+                    ]);
+                    break;
+                }
+
+                $logAction->execute($from->id, $relatedObject->messageId, ['message' => $relatedObject]);
                 app(CheckForConversations::class)->execute($patient);
 
                 break;
+            default:
+                $logAction->execute($from->id, 0, ['message' => $relatedObject]);
         }
 
         $update = $this->telegram->commandsHandler(true);

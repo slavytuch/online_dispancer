@@ -1,0 +1,72 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Patient API",
+        "description": "API for Patients",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/api/patient/{id}": {
+            "get": {
+                "summary": "Get all patient data",
+                "operationId": "8c4bc6a0f8a58c8cb80e44234e078f53",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Patient id in system",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Update patient in system",
+                "operationId": "a6344c6f4f814e74240d8a1b1fcedea1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Patient id in system",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/patient/": {
+            "get": {
+                "summary": "Get patient list in system",
+                "operationId": "d6615af0476e1fa00dfbd810d76f06a1",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Add patient to system",
+                "operationId": "00c5fe93d2713cfffe8d6995fef7c6a5",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        }
+    }
+}
