@@ -51,7 +51,7 @@ class MeasurementsConversation extends BaseConversationAbstract
         app(SaveCheckupMeasurementsAction::class)->execute($this->checkup, $resultMeasure);
 
         $this->reply(
-            ['text' => 'Значение параметра "' . $this->checkup->patientParam->name . '" принято - ' . $resultMeasure]
+            ['text' => 'Значение параметра "' . $this->checkup->patientParam->name . '" принято - ' . $resultMeasure->value]
         );
 
         return null;
