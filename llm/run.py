@@ -3,12 +3,11 @@ import json
 import base64
 import logging
 from flask import Flask, request, jsonify
+from datetime import timedelta
 import requests
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
-from transformers import AutoTokenizer, AutoModelForCausalLM
 from pydub import AudioSegment
-
 
 load_dotenv()
 
@@ -22,10 +21,11 @@ logging.basicConfig(
 )
 
 app = Flask(__name__)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 HF_AUTH_TOKEN = os.getenv("HF_AUTH_TOKEN")
-MODEL_NAME = "ContactDoctor/Bio-Medical-Llama-3-8B"
+MODEL_NAME = "llama3"
 
 CHATGPT_API_URL = "http://185.164.163.152/chat/completions"
 WHISPER_API_URL = "http://185.164.163.152/audio/transcriptions"
@@ -35,42 +35,56 @@ if not OPENAI_API_KEY:
     logging.error("OPENAI_API_KEY не найден")
     raise ValueError("Необходимо установить переменную окружения OPENAI_API_KEY")
 
-tokenizer = None
-model = None
-
-def load_model():
-    global tokenizer, model
-    if not tokenizer or not model:
-        logging.info("Загружаем модель и токенайзер...")
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=HF_AUTH_TOKEN)
-        model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, token=HF_AUTH_TOKEN)
-        model.config.pad_token_id = model.config.eos_token_id
 
 @app.route('/summary', methods=['POST'])
 def summary():
-    load_model()
     try:
         data = request.json
         if not data or 'patient_data' not in data:
+            logging.error("Отсутствуют данные пациента.")
             return jsonify({"error": "No patient data provided"}), 400
 
         patient_data = data['patient_data']
-        prompt = f"Summarize the following medical data with a focus on important changes:\n{patient_data}"
+        if not isinstance(patient_data, str) or not patient_data.strip():
+            logging.error("Неверный формат данных пациента.")
+            return jsonify({"error": "Invalid patient data format"}), 400
 
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024, padding=True)
-        outputs = model.generate(
-            inputs.input_ids,
-            attention_mask=inputs.attention_mask,
-            max_length=300,
-            num_return_sequences=1
+        prompt = f"""
+        Анализируй данные пациента:
+        {patient_data}
+
+        Найди изменения и представь результат в формате:
+        "Давление изменилось с [значение 1] на [значение 2]."
+        """
+
+        response = requests.post(
+            "http://ollama:11434/api/generate",
+            json={"model": MODEL_NAME, "prompt": prompt, "stream": False},
+            timeout=300
         )
 
-        summary_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        logging.info(f"Raw response: {response.text}")
 
-        return jsonify({"summary": summary_text})
+        if response.status_code != 200:
+            logging.error(f"Ошибка API Ollama: {response.text}")
+            return jsonify({"error": "Failed to process data with model"}), 500
+
+        try:
+            result = response.json()
+            logging.info(f"Parsed JSON: {result}")
+            summary = result.get("response", "")
+            if not summary.strip():
+                logging.error("Пустой ответ от модели.")
+                return jsonify({"summary": ""}), 200
+
+            return jsonify({"summary": summary})
+
+        except json.JSONDecodeError as e:
+            logging.error(f"Ошибка при парсинге JSON: {e}")
+            return jsonify({"error": "Invalid JSON response from Ollama"}), 500
 
     except Exception as e:
-        logging.error(f"Error during summary generation: {e}")
+        logging.error(f"Ошибка обработки: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/chat', methods=['POST'])
@@ -203,11 +217,14 @@ def transcribe():
                 transcription = response.json().get('text', '')
 
                 if message_context:
-                    result_text = f"{message_context}\n\n{transcription}"
+                    description = f"{message_context}\n\n{transcription}"
                 else:
-                    result_text = transcription
+                    description = transcription
 
-                return jsonify({'text': result_text})
+                # Используем GPT для извлечения ключевых значений
+                value = extract_values_from_text(description)
+
+                return jsonify({'description': description, 'value': value})
             else:
                 return jsonify({'error': 'Transcription failed', 'details': response.text}), response.status_code
 
@@ -245,8 +262,12 @@ def transcribe():
             response = requests.post(CHATGPT_API_URL, headers=headers, json=data)
 
             if response.status_code == 200:
-                result = response.json()['choices'][0]['message']['content']
-                return jsonify({'text': result})
+                description = response.json()['choices'][0]['message']['content']
+
+                # Используем GPT для извлечения ключевых значений
+                value = extract_values_from_text(description)
+
+                return jsonify({'description': description, 'value': value})
             else:
                 return jsonify({'error': 'Image analysis failed', 'details': response.text}), response.status_code
 
@@ -255,6 +276,41 @@ def transcribe():
 
     else:
         return jsonify({'error': 'Unsupported file type'}), 400
+
+def extract_values_from_text(text):
+    """
+    Вызывает GPT для выделения ключевых показателей из текста в компактном формате.
+    """
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {OPENAI_API_KEY}"
+        }
+
+        data = {
+            "model": "gpt-4",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": (
+                        f"Извлеки ключевые показатели из текста: '{text}'. "
+                        "Если это артериальное давление, ответь в формате 'SYS/DIA, Pulse'. "
+                        "Если это температура, ответь просто числом с °C. "
+                        "Если прибор показывает другие данные, перечисли их в компактном российском формате."
+                    )
+                }
+            ],
+            "max_tokens": 100
+        }
+
+        response = requests.post(CHATGPT_API_URL, headers=headers, json=data)
+
+        if response.status_code == 200:
+            return response.json()['choices'][0]['message']['content'].strip()
+        else:
+            return "Не удалось извлечь показатели"
+    except Exception as e:
+        return f"Ошибка извлечения данных: {str(e)}"
 
 
 def chat_with_context(transcription, context):
