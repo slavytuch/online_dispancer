@@ -4,11 +4,11 @@ namespace App\Application\Telegram;
 
 use App\Application\Telegram\Actions\LogAction;
 use App\Application\Telegram\Conversation\Actions\CheckForConversations;
-use App\Application\Telegram\Conversation\Actions\ProceedConversationAction;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 use Telegram\Bot\Api;
+use Telegram\Bot\Keyboard\Keyboard;
 use Telegram\Bot\Objects\CallbackQuery;
 use Telegram\Bot\Objects\Message;
 
@@ -51,7 +51,7 @@ class TelegramWebhookManager
 
         switch (get_class($relatedObject)) {
             case CallbackQuery::class:
-                $logAction->execute($patient->telegram_id, $relatedObject->from->id, ['callback_query' => $relatedObject]);
+                $logAction->execute($from->id, $relatedObject->from->id, ['callback_query' => $relatedObject]);
 
                 $factory = new InlineActionFactory($this->telegram, $relatedObject);
                 $action = $factory->getAction();
@@ -60,12 +60,23 @@ class TelegramWebhookManager
                 }
                 return;
             case Message::class:
-                $logAction->execute($patient->telegram_id, $relatedObject->messageId, ['message' => $relatedObject]);
+                if ($relatedObject->contact && !$patient->phone) {
+                    $patient->phone = $relatedObject->contact->phone_number;
+                    $patient->save();
+                    $this->telegram->sendMessage([
+                        'chat_id' => $from->id,
+                        'text' => 'Спасибо, телефон успешно сохранён',
+                        'reply_markup' => Keyboard::remove()
+                    ]);
+                    break;
+                }
+
+                $logAction->execute($from->id, $relatedObject->messageId, ['message' => $relatedObject]);
                 app(CheckForConversations::class)->execute($patient);
 
                 break;
             default:
-                $logAction->execute($patient->telegram_id, 0, ['message' => $relatedObject]);
+                $logAction->execute($from->id, 0, ['message' => $relatedObject]);
         }
 
         $update = $this->telegram->commandsHandler(true);

@@ -11,7 +11,8 @@ class RegisterPatientAction
         return Patient::factory(1, [
             'telegram_id' => $telegramId,
             'name' => $firstName,
-            'last_name' => $lastName
+            'last_name' => $lastName,
+            'phone' => null
         ])->create()->first;
     }
 }
