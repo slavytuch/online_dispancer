@@ -46,7 +46,7 @@ class QuestionConversation extends BaseConversationAbstract
         Question::create([
             'patient_id' => $patient->id,
             'user_id' => $patient->doctor->first()->id,
-            'question_text' => $result['description'],
+            'question_text' => $result['transcription'],
             'read' => false
         ]);
 
