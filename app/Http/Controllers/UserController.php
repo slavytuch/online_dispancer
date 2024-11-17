@@ -12,21 +12,21 @@ class UserController extends Controller
 {
     public function getById($userId)
     {
-        return PatientInfoResource::make(User::findOrFail($userId));
+        return User::findOrFail($userId);
     }
 
     public function getList()
     {
-        return UserListItem::collection(User::all());
+        return User::all();
     }
 
-    public function update($patientId, UserUpdateRequest $request)
+    public function update($userId, UserUpdateRequest $request)
     {
-        //TODO:
+        return User::findOrFail($userId)->update($request->toArray());
     }
 
     public function add(UserCreateRequest $request)
     {
-        //TODO:
+        return User::create($request->toArray());
     }
 }

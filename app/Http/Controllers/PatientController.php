@@ -22,12 +22,11 @@ class PatientController extends Controller
 
     public function update($patientId, PatientUpdateRequest $request)
     {
-        //TODO:
-
+        Patient::findOrFail($patientId)->update($request->toArray());
     }
 
     public function add(PatientCreateRequest $request)
     {
-        //TODO:
+        return Patient::create($request->toArray());
     }
 }
