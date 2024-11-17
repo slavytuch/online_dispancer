@@ -19,8 +19,7 @@ class ProcessingClient
     public function transcribe($filepath)
     {
         return Http::attach('file', file_get_contents($filepath), basename($filepath))->post(
-            $this->url,
-            ['message' => 'Перевести из файла в текст']
+            config('mediaprocessing.transcription_url')
         );
     }
 
