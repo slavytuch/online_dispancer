@@ -55,6 +55,7 @@ def summary():
 
         Найди изменения и представь результат в формате:
         "Давление изменилось с [значение 1] на [значение 2]."
+        Ответь на русском.
         """
 
         response = requests.post(
@@ -183,6 +184,92 @@ def chat():
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+
+    uploaded_file = request.files['file']
+    filename = secure_filename(uploaded_file.filename)
+    file_extension = filename.split('.')[-1].lower()
+
+    # Поддерживаемые форматы
+    supported_audio_formats = ['wav', 'oga', 'mp3', 'mp4', 'mpeg', 'mpga', 'webm']
+    supported_image_formats = ['jpg', 'jpeg', 'png']
+
+    # Обработка аудио
+    if file_extension in supported_audio_formats:
+        uploaded_file.save(filename)
+
+        wav_filename = filename
+        if file_extension == "oga":
+            wav_filename = filename.replace(".oga", ".wav")
+            convert_to_wav(filename, wav_filename)
+            os.remove(filename)
+
+        try:
+            with open(wav_filename, 'rb') as audio_file:
+                headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+                files = {'file': (wav_filename, audio_file, 'application/octet-stream')}
+                data = {'model': 'whisper-1'}
+
+                response = requests.post(WHISPER_API_URL, headers=headers, files=files, data=data)
+
+            os.remove(wav_filename)
+
+            if response.status_code == 200:
+                transcription = response.json().get('text', '')
+                return jsonify({'transcription': transcription})
+            else:
+                return jsonify({'error': 'Transcription failed', 'details': response.text}), response.status_code
+
+        except Exception as e:
+            os.remove(wav_filename)
+            return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+    # Обработка изображений
+    elif file_extension in supported_image_formats:
+        uploaded_file.save(filename)
+
+        try:
+            base64_image = encode_image(filename)
+            os.remove(filename)
+
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {OPENAI_API_KEY}"
+            }
+
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text",
+                             "text": "На изображении показан медицинский прибор. Определи его тип и значения его показателей. Если это не медицинский прибор, то просто опиши картинку."},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                        ]
+                    }
+                ],
+                "max_tokens": 300
+            }
+
+            response = requests.post(CHATGPT_API_URL, headers=headers, json=data)
+
+            if response.status_code == 200:
+                transcription = response.json()['choices'][0]['message']['content']
+                return jsonify({'transcription': transcription})
+            else:
+                return jsonify({'error': 'Image analysis failed', 'details': response.text}), response.status_code
+
+        except Exception as e:
+            return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+    else:
+        return jsonify({'error': 'Unsupported file type'}), 400
+
+
+@app.route('/transcribe-parser', methods=['POST'])
+def transcribe_parser():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
