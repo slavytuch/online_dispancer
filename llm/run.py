@@ -55,7 +55,7 @@ def summary():
 
         Найди изменения и представь результат в формате:
         "Давление изменилось с [значение 1] на [значение 2]."
-        Ответь на русском.
+        Ответь на русском.пше фв
         """
 
         response = requests.post(
@@ -245,7 +245,7 @@ def transcribe():
                         "role": "user",
                         "content": [
                             {"type": "text",
-                             "text": "На изображении показан медицинский прибор. Определи его тип и значения его показателей. Если это не медицинский прибор, то просто опиши картинку."},
+                             "text": "На изображении показан медицинский прибор. Определи его тип и значения его показателей."},
                             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
                         ]
                     }
@@ -256,8 +256,11 @@ def transcribe():
             response = requests.post(CHATGPT_API_URL, headers=headers, json=data)
 
             if response.status_code == 200:
-                transcription = response.json()['choices'][0]['message']['content']
-                return jsonify({'transcription': transcription})
+                raw_description = response.json()['choices'][0]['message']['content']
+
+                extracted_values = extract_values_from_text(raw_description)
+
+                return jsonify({'transcription': extracted_values})
             else:
                 return jsonify({'error': 'Image analysis failed', 'details': response.text}), response.status_code
 
@@ -266,6 +269,7 @@ def transcribe():
 
     else:
         return jsonify({'error': 'Unsupported file type'}), 400
+
 
 
 @app.route('/transcribe-parser', methods=['POST'])
