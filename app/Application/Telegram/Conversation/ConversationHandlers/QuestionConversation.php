@@ -52,7 +52,9 @@ class QuestionConversation extends BaseConversationAbstract
         ]);
 
         $this->reply([
-                'text' => 'Принял, как доктор ответит - я тебе пришлю ответ.' .PHP_EOL . 'Твой вопрос:' .PHP_EOL . $questionText
+                'text' => 'Принял, как доктор ответит - я тебе пришлю ответ.' .PHP_EOL .
+                    'Твой вопрос:' .PHP_EOL . '<blockquote>' . $questionText . '</blockquote>',
+                'parse_mode' => 'HTML'
             ]
         );
 
