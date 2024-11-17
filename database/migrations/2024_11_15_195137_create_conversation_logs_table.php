@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('conversation_logs', function (Blueprint $table) {
             $table->id();
             $table->timestamps();
-            $table->boolean('finished')->default(false);
             $table->string('telegram_id');
             $table->string('message_id');
             $table->longText('data');

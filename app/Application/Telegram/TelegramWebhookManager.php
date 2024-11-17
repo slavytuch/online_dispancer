@@ -2,6 +2,7 @@
 
 namespace App\Application\Telegram;
 
+use App\Application\Telegram\Actions\LogAction;
 use App\Application\Telegram\Conversation\Actions\CheckForConversations;
 use App\Application\Telegram\Conversation\Actions\ProceedConversationAction;
 use App\Models\Patient;
@@ -37,7 +38,7 @@ class TelegramWebhookManager
             $patient = Patient::factory(1, [
                 'telegram_id' => $from->id,
                 'name' => $from->first_name ?? $from->username,
-            ])->create();
+            ])->create()->first;
         }
 
         \Log::info('message', ['message' => $relatedObject]);
@@ -46,8 +47,12 @@ class TelegramWebhookManager
             throw new \Exception('Нет пользователя для обработки');
         }
 
+        $logAction = app(LogAction::class);
+
         switch (get_class($relatedObject)) {
             case CallbackQuery::class:
+                $logAction->execute($patient->telegram_id, $relatedObject->from->id, ['callback_query' => $relatedObject]);
+
                 $factory = new InlineActionFactory($this->telegram, $relatedObject);
                 $action = $factory->getAction();
                 if ($action) {
@@ -55,9 +60,12 @@ class TelegramWebhookManager
                 }
                 return;
             case Message::class:
+                $logAction->execute($patient->telegram_id, $relatedObject->messageId, ['message' => $relatedObject]);
                 app(CheckForConversations::class)->execute($patient);
 
                 break;
+            default:
+                $logAction->execute($patient->telegram_id, 0, ['message' => $relatedObject]);
         }
 
         $update = $this->telegram->commandsHandler(true);
