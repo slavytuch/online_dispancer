@@ -4,7 +4,7 @@ namespace App\Application\Telegram;
 
 use App\Application\Telegram\Actions\LogAction;
 use App\Application\Telegram\Conversation\Actions\CheckForConversations;
-use App\Models\Patient;
+use App\Domain\Patient\Actions\RegisterPatientAction;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
 use Telegram\Bot\Api;
@@ -35,10 +35,7 @@ class TelegramWebhookManager
         \Log::info('from', ['from' => $from]);
         $patient = null;
         if ($from && !$patient = PatientHelper::getByTelegramId($from->id)) {
-            $patient = Patient::factory(1, [
-                'telegram_id' => $from->id,
-                'name' => $from->first_name ?? $from->username,
-            ])->create()->first;
+            $patient = app(RegisterPatientAction::class)->execute($from->id, $from->first_name, $from->last_name);
         }
 
         \Log::info('message', ['message' => $relatedObject]);
