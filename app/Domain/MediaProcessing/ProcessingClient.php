@@ -10,9 +10,18 @@ use Illuminate\Support\Facades\Http;
 class ProcessingClient
 {
     protected string $url;
+
     public function __construct()
     {
         $this->url = config('mediaprocessing.url');
+    }
+
+    public function transcribe($filepath)
+    {
+        return Http::attach('file', file_get_contents($filepath), basename($filepath))->post(
+            $this->url,
+            ['message' => 'Перевести из файла в текст']
+        );
     }
 
     public function processFile(string $filepath, PatientParam $param): ProcessResult
@@ -33,7 +42,7 @@ class ProcessingClient
         switch ($param->code) {
             case 'pressure':
                 $matches = [];
-                if(preg_match('/\d+\/\d+/', $response['value'], $matches)) {
+                if (preg_match('/\d+\/\d+/', $response['value'], $matches)) {
                     $numbers = explode('/', $matches[0]);
                     $value = [
                         'first' => $numbers[0],
@@ -43,7 +52,7 @@ class ProcessingClient
                 break;
             case 'weight':
                 $matches = [];
-                if(preg_match('/(\d+) кг/', $response['value'], $matches)) {
+                if (preg_match('/(\d+) кг/', $response['value'], $matches)) {
                     $value = $matches[1];
                 }
                 break;

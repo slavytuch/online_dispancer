@@ -1,5 +1,6 @@
 <?php
 
+use App\Application\Telegram\Commands\AskQuestionCommand;
 use Telegram\Bot\Commands\HelpCommand;
 
 return [
@@ -42,7 +43,8 @@ return [
             'commands' => [
                 \App\Application\Telegram\Commands\StartCommand::class,
                 \App\Application\Telegram\Commands\GreetCommand::class,
-                \App\Application\Telegram\Commands\WebAppButtonCommand::class
+                \App\Application\Telegram\Commands\WebAppButtonCommand::class,
+                AskQuestionCommand::class
             ],
         ],
 

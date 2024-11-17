@@ -4,7 +4,9 @@ namespace App\Application\Telegram\Conversation\ConversationHandlers;
 
 use App\Application\Telegram\Conversation\Abstracts\BaseConversationAbstract;
 use App\Application\Telegram\Conversation\Enums\ConversationTopic;
-use Illuminate\Support\Facades\Log;
+use App\Application\Telegram\PatientHelper;
+use App\Domain\MediaProcessing\ProcessingClient;
+use App\Models\Question;
 
 class QuestionConversation extends BaseConversationAbstract
 {
@@ -22,7 +24,36 @@ class QuestionConversation extends BaseConversationAbstract
     {
         $message = $this->telegram->getWebhookUpdate()->getMessage();
 
-        Log::info('Confirm', ['message' => $message]);
+        $patient = PatientHelper::getByTelegramId($message->from->id);
+
+        if ($message->text) {
+            $result = $message->text;
+        } elseif ($message->photo) {
+            $tempPath = storage_path('temp');
+            $file = $this->telegram->downloadFile($message->photo[3]->file_id, $tempPath);
+            $result = app(ProcessingClient::class)
+                ->transcribe($file);
+        } elseif ($message->voice) {
+            $tempPath = storage_path('temp');
+            $file = $this->telegram->downloadFile($message->voice->file_id, $tempPath);
+            $result = app(ProcessingClient::class)
+                ->transcribe($file);
+        } else {
+            $this->reply(['text' => 'Я не умею работать с такими файлами, нужен текст, голосовое сообщение или фото']);
+            return 'confirm';
+        }
+
+        Question::create([
+            'patient_id' => $patient->id,
+            'user_id' => $patient->doctor->first()->id,
+            'question_text' => $result['description'],
+            'read' => false
+        ]);
+
+        $this->reply([
+                'text' => 'Принял, как доктор ответит - я тебе пришлю ответ'
+            ]
+        );
 
         return null;
     }

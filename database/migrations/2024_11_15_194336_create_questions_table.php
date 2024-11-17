@@ -16,7 +16,7 @@ return new class extends Migration
             $table->timestamps();
             $table->bigInteger('patient_id');
             $table->bigInteger('user_id');
-            $table->boolean('read');
+            $table->boolean('read')->default(false);
             $table->text('question_text');
             $table->text('answer_text')->nullable();
         });
